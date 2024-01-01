@@ -6,11 +6,11 @@ import re
 def match_single(regexes, line, dtype=int):
     if isinstance(regexes, str):
         regexes = [(regexes, dtype)]
-    
+
     for i in range(len(regexes)):
         if isinstance(regexes[i], str):
             regexes[i] = (regexes[i], dtype)
-    
+
     try:
         for r, transform in regexes:
             match = re.search(r, line)
@@ -47,7 +47,7 @@ class SrtFileParser:
     def get_gps(self, timestamp):
         if not self.data:
             self.parse()
-        
+
         # Initialize on first call
         prev_coords = None
 
@@ -66,7 +66,7 @@ class SrtFileParser:
                     add = (not len(self.gps_data)) or (coords[0], coords[1]) != (self.gps_data[-1][1][0], self.gps_data[-1][1][1])
                     if add:
                         self.gps_data.append((tm, coords))
-        
+
         # No data available
         if not len(self.gps_data) or self.gps_data[0][0] > timestamp:
             return None
@@ -90,7 +90,7 @@ class SrtFileParser:
                 gd_e = self.gps_data[end]
                 sx, sy, sz = gd_s[1]
                 ex, ey, ez = gd_e[1]
-                
+
                 dt = (gd_e[0] - gd_s[0]).total_seconds()
                 if dt >= 10:
                     return None
@@ -120,12 +120,20 @@ class SrtFileParser:
         # DJI Mavic Mini
         # 1
         # 00:00:00,000 --> 00:00:01,000
-        # F/2.8, SS 206.14, ISO 150, EV 0, GPS (-82.6669, 27.7716, 10), D 2.80m, H 0.00m, H.S 0.00m/s, V.S 0.00m/s 
+        # F/2.8, SS 206.14, ISO 150, EV 0, GPS (-82.6669, 27.7716, 10), D 2.80m, H 0.00m, H.S 0.00m/s, V.S 0.00m/s
 
         # DJI Phantom4 RTK
         # 36
         # 00:00:35,000 --> 00:00:36,000
         # F/6.3, SS 60, ISO 100, EV 0, RTK (120.083799, 30.213635, 28), HOME (120.084146, 30.214243, 103.55m), D 75.36m, H 76.19m, H.S 0.30m/s, V.S 0.00m/s, F.PRY (-5.3°, 2.1°, 28.3°), G.PRY (-40.0°, 0.0°, 28.2°)
+
+        # DJI AVATA
+        # 1
+        # 00:00:00,000 --> 00:00:00,033
+        # <font size="28">FrameCnt: 1, DiffTime: 33ms
+        # 2023-12-20 18:50:46.262
+        # [iso: 6400] [shutter: 1/60.0] [fnum: 2.8] [ev: 0.7] [ct: 4997] [color_md : default] [focal_len: 12.60] [latitude: -8.57102] [longitude: 116.11599] [rel_alt: 14.900 abs_alt: 74.466] </font>
+
 
         with open(self.filename, 'r') as f:
 
@@ -209,6 +217,7 @@ class SrtFileParser:
 
                 altitude = match_single([
                     ("altitude: ([\d\.\-]+)", lambda v: float(v) if v != 0 else None),
+                    ("abs_alt: ([\d\.\-]+)", lambda v: float(v) if v != 0 else None), # for DJI AVATA, DJI AIR 3
                     ("GPS \([\d\.\-]+,? [\d\.\-]+,? ([\d\.\-]+)\)", lambda v: float(v) if v != 0 else None),
                     ("RTK \([-+]?\d+\.\d+, [-+]?\d+\.\d+, (-?\d+)\)", lambda v: float(v) if v != 0 else None),
                 ], line)
